@@ -37,7 +37,7 @@ import java.awt.Checkbox
 
 class EditorApp : App(EditorView::class)
 
-class EditorView : View() {
+class EditorView : View("BCCAD Editor") {
 	override val root = VBox()
 	var frame: Long = 30
 	var currentAnimation: Animation? = null
@@ -621,7 +621,7 @@ class EditorView : View() {
 						}
 					}
 					hbox {
-						alignment = Pos.CENTER_LEFT
+						alignment = Pos.CENTER_RIGHT
 						label("Zoom: ")
 						zoomLabel = label("100%")
 					}
