@@ -14,25 +14,18 @@ import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
 import java.util.*
 import javax.imageio.ImageIO
-import com.sun.deploy.uitoolkit.ToolkitStore.dispose
 import javafx.animation.KeyFrame
 import javafx.animation.Timeline
 import javafx.embed.swing.SwingFXUtils
-import javafx.event.Event
 import javafx.event.EventHandler
 import javafx.scene.Scene
 import javafx.scene.transform.Affine
 import java.awt.Graphics2D
-import javafx.scene.SnapshotParameters
-import javafx.scene.image.ImageView
-import javafx.scene.input.MouseEvent
-import javafx.scene.layout.Background
 import javafx.scene.transform.Scale
 import javafx.stage.Modality
 import javafx.stage.Stage
 import javafx.stage.Window
 import javafx.util.Duration
-import java.awt.Checkbox
 
 
 class EditorApp : App(EditorView::class)
@@ -58,8 +51,19 @@ class EditorView : View("BCCAD Editor") {
 
 	lateinit var stepSpriteSpinner: Spinner<Int>
 	lateinit var stepDurationSpinner: Spinner<Int>
+
 	lateinit var stepXSpinner: Spinner<Int>
 	lateinit var stepYSpinner: Spinner<Int>
+
+	lateinit var stepUnkSpinner: Spinner<Double>
+
+	lateinit var stepScaleXSpinner: Spinner<Double>
+	lateinit var stepScaleYSpinner: Spinner<Double>
+
+	lateinit var stepRotationSpinner: Spinner<Double>
+
+	lateinit var stepColorPicker: ColorPicker
+
 	lateinit var stepOpacitySpinner: Spinner<Int>
 	lateinit var stepUnknownDataBox: TextArea
 
@@ -73,6 +77,11 @@ class EditorView : View("BCCAD Editor") {
 
 	lateinit var partFlipXCheck: CheckBox
 	lateinit var partFlipYCheck: CheckBox
+
+	lateinit var partColorPicker: ColorPicker
+	lateinit var partScreenPicker: ColorPicker
+
+	lateinit var partOpacitySpinner: Spinner<Int>
 
 	lateinit var partUnknownDataBox: TextArea
 
@@ -302,6 +311,67 @@ class EditorView : View("BCCAD Editor") {
 											}
 										}
 									}
+
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("???:")
+										stepUnkSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 0.1) {
+											isEditable = true
+											prefWidth = 80.0
+											valueFactory.valueProperty().addListener { _, _, new ->
+												currentStep?.depth = new.toFloat()
+												drawStep(stepCanvas, currentStep!!)
+											}
+										}
+									}
+
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("Scale X")
+										stepScaleXSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 0.1) {
+											isEditable = true
+											prefWidth = 80.0
+											valueFactory.valueProperty().addListener { _, _, new ->
+												currentStep?.stretchX = new.toFloat()
+												drawStep(stepCanvas, currentStep!!)
+											}
+										}
+										label("Y")
+										stepScaleYSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 0.1) {
+											isEditable = true
+											prefWidth = 80.0
+											valueFactory.valueProperty().addListener { _, _, new ->
+												currentStep?.stretchY = new.toFloat()
+												drawStep(stepCanvas, currentStep!!)
+											}
+										}
+									}
+
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("Rotation:")
+										stepRotationSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0) {
+											isEditable = true
+											prefWidth = 80.0
+											valueFactory.valueProperty().addListener { _, _, new ->
+												currentStep?.rotation = new.toFloat()
+												drawStep(stepCanvas, currentStep!!)
+											}
+										}
+										label("°")
+									}
+
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("Multiply Color: ")
+										stepColorPicker = colorpicker {
+											valueProperty().addListener { _, _, new ->
+												currentStep?.color = new
+												drawStep(stepCanvas, currentStep!!)
+											}
+										}
+									}
+
 									hbox(spacing = 6) {
 										alignment = Pos.CENTER_LEFT
 										label("Opacity: ")
@@ -430,7 +500,9 @@ class EditorView : View("BCCAD Editor") {
 												if (x == 0 && y == 0 && w == 0 && h == 0) {
 													return@action
 												}
-												currentSprite!!.parts.add(SpritePart(x.toShort(), y.toShort(), w.toShort(), h.toShort(), 512, 512))
+												val part = SpritePart(x.toShort(), y.toShort(), w.toShort(), h.toShort(), 512, 512)
+												part.unknownData.addAll(currentPart!!.unknownData)
+												currentSprite!!.parts.add(part)
 												spriteListener(ReadOnlyObjectWrapper(0), 0, spriteSpinner.value)
 												partSpinner.increment(1000)
 											}
@@ -556,6 +628,41 @@ class EditorView : View("BCCAD Editor") {
 										}
 									}
 
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("Multiply Color: ")
+										partColorPicker = colorpicker {
+											valueProperty().addListener { _, _, new ->
+												currentPart?.multColor = new
+												drawCurrentSprite()
+											}
+										}
+									}
+
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("Screening Color: ")
+										partScreenPicker = colorpicker {
+											valueProperty().addListener { _, _, new ->
+												currentPart?.screenColor = new
+												drawCurrentSprite()
+											}
+										}
+									}
+
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("Opacity: ")
+										partOpacitySpinner = spinner(0, 255, 255) {
+											isEditable = true
+											prefWidth = 70.0
+											valueProperty().addListener { _, _, new ->
+												currentPart?.opacity = new
+												drawCurrentSprite()
+											}
+										}
+									}
+
 									label("Unknown Data:")
 
 									partUnknownDataBox = textarea {
@@ -571,22 +678,27 @@ class EditorView : View("BCCAD Editor") {
 											if (e.isPrimaryButtonDown) {
 												currentPart?.relX = (currentPart!!.relX + e.x - prevX).toShort()
 												currentPart?.relY = (currentPart!!.relY + e.y - prevY).toShort()
+												prevX = e.x.toInt()
+												prevY = e.y.toInt()
 											} else if (e.isSecondaryButtonDown) {
-												val xFactor = (currentPart!!.stretchX * ((e.x - (currentPart!!.relX - 256)) / (prevX - (currentPart!!.relX - 256)))).toFloat()
-												val yFactor = (currentPart!!.stretchY * ((e.y - (currentPart!!.relY - 256)) / (prevY - (currentPart!!.relY - 256)))).toFloat()
+												val xFactor = ((e.x - (currentPart!!.relX - 256)) / (prevX - (currentPart!!.relX - 256))).toFloat()
+												val yFactor = ((e.y - (currentPart!!.relY - 256)) / (prevY - (currentPart!!.relY - 256))).toFloat()
 												if (xFactor != 0f &&
 														xFactor.isFinite()) {
-													currentPart?.stretchX = xFactor
+													currentPart!!.stretchX *= xFactor
+													prevX = e.x.toInt()
 													if (e.isShiftDown && yFactor != 0f && yFactor.isFinite()) {
-														currentPart?.stretchY = yFactor
+														currentPart!!.stretchY *= yFactor
+														prevY = e.y.toInt()
 													} else {
-														currentPart?.stretchY = xFactor
+														currentPart!!.stretchY *= xFactor
 													}
 												}
 											}
+										} else {
+											prevX = e.x.toInt()
+											prevY = e.y.toInt()
 										}
-										prevX = e.x.toInt()
-										prevY = e.y.toInt()
 										updatePart()
 										drawCurrentSprite()
 									}
@@ -636,6 +748,9 @@ class EditorView : View("BCCAD Editor") {
 		partScaleXSpinner.valueFactory.value = currentPart!!.stretchX.toDouble()
 		partScaleYSpinner.valueFactory.value = currentPart!!.stretchY.toDouble()
 		partRotationSpinner.valueFactory.value = currentPart!!.rotation.toDouble()
+		partColorPicker.value = currentPart!!.multColor
+		partScreenPicker.value = currentPart!!.screenColor
+		partOpacitySpinner.valueFactory.value = currentPart!!.opacity
 		partFlipXCheck.isSelected = currentPart!!.flipX
 		partFlipYCheck.isSelected = currentPart!!.flipY
 		partUnknownDataBox.text = currentPart!!.unknownData.map { String.format("%02X", it) }.joinToString(" ")
@@ -644,6 +759,11 @@ class EditorView : View("BCCAD Editor") {
 	fun updateStep() {
 		stepSpriteSpinner.valueFactory.value = currentStep!!.spriteNum.toInt()
 		stepDurationSpinner.valueFactory.value = currentStep!!.duration.toInt()
+		stepScaleXSpinner.valueFactory.value = currentStep!!.stretchX.toDouble()
+		stepScaleYSpinner.valueFactory.value = currentStep!!.stretchY.toDouble()
+		stepRotationSpinner.valueFactory.value = currentStep!!.rotation.toDouble()
+		stepUnkSpinner.valueFactory.value = currentStep!!.depth.toDouble()
+		stepColorPicker.value = currentStep!!.color
 		stepXSpinner.valueFactory.value = currentStep!!.tlX.toInt()
 		stepYSpinner.valueFactory.value = currentStep!!.tlY.toInt()
 		stepOpacitySpinner.valueFactory.value = currentStep!!.opacity.toInt()
@@ -658,18 +778,20 @@ class EditorView : View("BCCAD Editor") {
 			gc.save()
 			gc.transform(Affine(Scale(zoomFactor, zoomFactor, 256.0, 256.0)))
 			currentPart!!.setTransformations(gc)
+			gc.globalAlpha = 1.0
 			gc.stroke = Color.RED
-			gc.strokeRect(currentPart!!.relX - 512.0 + 256.0, currentPart!!.relY - 512.0 + 256.0, currentPart!!.w.toDouble(), currentPart!!.h.toDouble())
+			gc.strokeRect(currentPart!!.relX - 512.0 + 256.0, currentPart!!.relY - 512.0 + 256.0, Math.abs(currentPart!!.w*currentPart!!.stretchX)*1.0, Math.abs(currentPart!!.h*currentPart!!.stretchY)*1.0)
 			gc.restore()
 		}
 	}
 
-	fun drawSprite(canvas: Canvas, sprite: Sprite) {
+	fun drawSprite(canvas: Canvas, sprite: Sprite, multColor: Color = Color.WHITE) {
 		with (canvas) {
 			val gc = graphicsContext2D
 			if (sheet != null) {
 				for (p in sprite.parts) {
-					val image = SwingFXUtils.toFXImage(sheet!!.getSubimage(p.x.toInt(), p.y.toInt(), p.w.toInt(), p.h.toInt()), null)
+					val bufferedImage = sheet!!.getSubimage(p.x.toInt(), p.y.toInt(), p.w.toInt(), p.h.toInt())
+					val image = p.toImage(bufferedImage, multColor)
 					gc.save()
 					gc.transform(Affine(Scale(zoomFactor, zoomFactor, 256.0, 256.0)))
 					p.setTransformations(gc)
@@ -702,7 +824,7 @@ class EditorView : View("BCCAD Editor") {
 			drawTransparencyGrid(canvas)
 			gc.save()
 			step.setTransformations(gc)
-			drawSprite(canvas, bccad!!.sprites[step.spriteNum.toInt()])
+			drawSprite(canvas, bccad!!.sprites[step.spriteNum.toInt()], step.color)
 			gc.restore()
 		}
 	}
