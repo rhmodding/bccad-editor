@@ -314,7 +314,7 @@ class EditorView : View("BCCAD Editor") {
 
 									hbox(spacing = 6) {
 										alignment = Pos.CENTER_LEFT
-										label("???:")
+										label("Depth:")
 										stepUnkSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 0.1) {
 											isEditable = true
 											prefWidth = 80.0
