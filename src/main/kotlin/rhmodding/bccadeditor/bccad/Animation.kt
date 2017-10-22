@@ -11,7 +11,9 @@ class Animation(val name: String) {
 	}
 
 	fun addNewStep() {
-		steps.add(AnimationStep(0, 1))
+		val step = AnimationStep(0, 1)
+		step.unknownData.addAll(listOf(0, 0))
+		steps.add(step)
 	}
 
 	companion object {
