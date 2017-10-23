@@ -23,7 +23,13 @@ class SpritePart(var x: Short, var y: Short, var w: Short, var h: Short, var rel
 	var flipY: Boolean = false
 	var multColor: Color = Color.WHITE
 	var screenColor: Color = Color.BLACK
+	var designation: Int = 0
+	var unk = 255
 	var opacity = 255
+	var tldepth = 0f
+	var bldepth = 0f
+	var trdepth = 0f
+	var brdepth = 0f
 
 	val unknownData = mutableListOf<Byte>()
 
@@ -38,16 +44,22 @@ class SpritePart(var x: Short, var y: Short, var w: Short, var h: Short, var rel
 			t.multColor = Color.rgb(buf.get().toInt() and 0xFF, buf.get().toInt() and 0xFF, buf.get().toInt() and 0xFF)
 			t.screenColor = Color.rgb(buf.get().toInt() and 0xFF, buf.get().toInt() and 0xFF, buf.get().toInt() and 0xFF)
 			t.opacity = buf.get().toInt() and 0xFF
-			repeat(0x40 - 0x21) {
+			repeat(12) {
 				t.unknownData.add(buf.get())
 			}
+			t.designation = buf.get().toInt()
+			t.unk = buf.short.toInt()
+			t.tldepth = buf.float
+			t.bldepth = buf.float
+			t.trdepth = buf.float
+			t.brdepth = buf.float
 			return t
 		}
 	}
 
 	fun toBytes(): List<Byte> {
-		val firstBytes = ByteArray(33)
-		val b = ByteBuffer.wrap(firstBytes).order(ByteOrder.LITTLE_ENDIAN)
+		val bytes = ByteArray(0x40)
+		val b = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
 		b.putShort(x)
 		b.putShort(y)
 		b.putShort(w)
@@ -66,9 +78,16 @@ class SpritePart(var x: Short, var y: Short, var w: Short, var h: Short, var rel
 		b.put((screenColor.green*255).toByte())
 		b.put((screenColor.blue*255).toByte())
 		b.put(opacity.toByte())
-		val l = firstBytes.toMutableList()
-		l.addAll(unknownData)
-		return l
+		for (i in unknownData) {
+			b.put(i)
+		}
+		b.put(designation.toByte())
+		b.putShort(unk.toShort())
+		b.putFloat(tldepth)
+		b.putFloat(bldepth)
+		b.putFloat(trdepth)
+		b.putFloat(brdepth)
+		return bytes.toList()
 	}
 
 	fun setTransformations(gc: GraphicsContext) {
@@ -104,12 +123,12 @@ class SpritePart(var x: Short, var y: Short, var w: Short, var h: Short, var rel
 				val sr = 1 - (1-screenColor.red)*(1-r)
 				val sg = 1 - (1-screenColor.green)*(1-g)
 				val sb = 1 - (1-screenColor.blue)*(1-b)
-				val mr = r * multColor.red * this.multColor.red
-				val mg = g * multColor.green * this.multColor.green
-				val mb = b * multColor.blue * this.multColor.blue
-				pixels[n] = ((sr*(1-r) + r*mr)*255).toInt()
-				pixels[n+1] = ((sg*(1-g) + g*mg)*255).toInt()
-				pixels[n+2] = ((sb*(1-b) + b*mb)*255).toInt()
+				val mr = r * this.multColor.red
+				val mg = g * this.multColor.green
+				val mb = b * this.multColor.blue
+				pixels[n] = ((sr*(1-r) + r*mr)*multColor.red*255).toInt()
+				pixels[n+1] = ((sg*(1-g) + g*mg)*multColor.green*255).toInt()
+				pixels[n+2] = ((sb*(1-b) + b*mb)*multColor.blue*255).toInt()
 			}
 		}
 		raster.setPixels(0, 0, raster.width, raster.height, pixels)
@@ -123,11 +142,19 @@ class SpritePart(var x: Short, var y: Short, var w: Short, var h: Short, var rel
 
 	fun copy(): SpritePart {
 		val p = SpritePart(x, y, w, h, 512, 512)
+		p.relX = relX
+		p.relY = relY
 		p.stretchX = stretchX
 		p.stretchY = stretchY
 		p.rotation = rotation
 		p.flipX = flipX
 		p.flipY = flipY
+		p.tldepth = tldepth
+		p.trdepth = trdepth
+		p.bldepth = bldepth
+		p.brdepth = brdepth
+		p.multColor = Color.color(multColor.red, multColor.green, multColor.blue)
+		p.screenColor = Color.color(screenColor.red, screenColor.green, screenColor.blue)
 		p.unknownData.addAll(unknownData)
 		return p
 	}

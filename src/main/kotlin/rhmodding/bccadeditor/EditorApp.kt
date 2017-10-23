@@ -81,9 +81,19 @@ class EditorView : View("BCCAD Editor") {
 	lateinit var partColorPicker: ColorPicker
 	lateinit var partScreenPicker: ColorPicker
 
+	lateinit var partDesignationSpinner: Spinner<Int>
+
+	lateinit var partTLDepthSpinner: Spinner<Double>
+	lateinit var partBLDepthSpinner: Spinner<Double>
+	lateinit var partTRDepthSpinner: Spinner<Double>
+	lateinit var partBRDepthSpinner: Spinner<Double>
+
 	lateinit var partOpacitySpinner: Spinner<Int>
+	lateinit var partUnkSpinner: Spinner<Int>
 
 	lateinit var partUnknownDataBox: TextArea
+
+	lateinit var tp: TabPane
 
 	lateinit var zoomLabel: Label
 
@@ -193,7 +203,7 @@ class EditorView : View("BCCAD Editor") {
 					}
 				}
 				bottom = vbox {
-					tabpane {
+					tp = tabpane {
 						tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
 						tab("Animations", VBox()) {
 							borderpane {
@@ -275,6 +285,12 @@ class EditorView : View("BCCAD Editor") {
 											valueProperty().addListener { _, _, new ->
 												currentStep?.spriteNum = new.toShort()
 												drawStep(stepCanvas, currentStep!!)
+											}
+										}
+										button("Edit") {
+											action {
+												spriteSpinner.valueFactory.value = stepSpriteSpinner.value
+												tp.selectionModel.selectNext()
 											}
 										}
 									}
@@ -388,19 +404,72 @@ class EditorView : View("BCCAD Editor") {
 									stepUnknownDataBox = textarea {
 										isWrapText = true
 										isEditable = false
+										prefHeight = 0.0
 									}
 								}
 								stepCanvas = canvas(512.0, 512.0) {
+									var prevX = -1
+									var prevY = -1
+									onMouseDragged = EventHandler { e ->
+										if (prevX > -1) {
+											if (e.isPrimaryButtonDown) {
+												currentStep?.tlX = (currentStep!!.tlX + e.x - prevX).toShort()
+												currentStep?.tlY = (currentStep!!.tlY + e.y - prevY).toShort()
+												prevX = e.x.toInt()
+												prevY = e.y.toInt()
+											} else if (e.isSecondaryButtonDown) {
+												val xFactor = ((e.x - 256) / (prevX - 256)).toFloat()
+												val yFactor = ((e.y - 256) / (prevY - 256)).toFloat()
+												if (xFactor != 0f &&
+														xFactor.isFinite()) {
+													currentStep!!.stretchX *= xFactor
+													prevX = e.x.toInt()
+													if (e.isShiftDown && yFactor != 0f && yFactor.isFinite()) {
+														currentStep!!.stretchY *= yFactor
+														prevY = e.y.toInt()
+													} else {
+														currentStep!!.stretchY *= xFactor
+													}
+												}
+											}
+										} else {
+											prevX = e.x.toInt()
+											prevY = e.y.toInt()
+										}
+										updateStep()
+										drawStep(stepCanvas, currentStep!!)
+									}
 									onScroll = EventHandler { e ->
 										if (e.isControlDown) {
-											if (e.deltaY > 0 || e.deltaX > 0) {
-												zoomFactor *= Math.pow(2.0, 1/7.0)
+											if (e.isShiftDown) {
+												if (e.deltaY > 0 || e.deltaX > 0) {
+													animationSpinner.increment()
+												} else {
+													animationSpinner.decrement()
+												}
 											} else {
-												zoomFactor /= Math.pow(2.0, 1/7.0)
+												if (e.deltaY > 0 || e.deltaX > 0) {
+													zoomFactor *= Math.pow(2.0, 1 / 7.0)
+												} else {
+													zoomFactor /= Math.pow(2.0, 1 / 7.0)
+												}
+												zoomLabel.text = String.format("%.0f%%", zoomFactor * 100)
 											}
-											zoomLabel.text = String.format("%.0f%%", zoomFactor*100)
+										} else if (e.isShiftDown) {
+											if (e.deltaY > 0 || e.deltaX > 0) {
+												stepSpinner.increment()
+											} else {
+												stepSpinner.decrement()
+											}
+										} else {
+											currentStep!!.rotation += e.deltaY.toFloat()/20
 										}
+										updateStep()
 										drawStep(this, currentStep!!)
+									}
+									onMouseReleased = EventHandler {
+										prevX = -1
+										prevY = -1
 									}
 									drawTransparencyGrid(this)
 								}
@@ -420,6 +489,26 @@ class EditorView : View("BCCAD Editor") {
 											isEditable = true
 											prefWidth = 60.0
 											valueProperty().addListener(spriteListener)
+										}
+										button("Add New") {
+											action {
+												bccad!!.sprites.add(Sprite())
+												val f = spriteSpinner.valueFactory
+												if (f is SpinnerValueFactory.IntegerSpinnerValueFactory) {
+													f.max++
+												}
+												spriteSpinner.increment(bccad!!.sprites.size)
+											}
+										}
+										button("Duplicate") {
+											action {
+												bccad!!.sprites.add(currentSprite!!.copy())
+												val f = spriteSpinner.valueFactory
+												if (f is SpinnerValueFactory.IntegerSpinnerValueFactory) {
+													f.max++
+												}
+												spriteSpinner.increment(bccad!!.sprites.size)
+											}
 										}
 									}
 									hbox(spacing = 6) {
@@ -663,11 +752,81 @@ class EditorView : View("BCCAD Editor") {
 										}
 									}
 
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("???: ")
+										partUnkSpinner = spinner(0, 65535, 255) {
+											isEditable = true
+											prefWidth = 70.0
+											valueProperty().addListener { _, _, new ->
+												currentPart?.unk = new
+												drawCurrentSprite()
+											}
+										}
+										label("(Crashes game if changed)")
+									}
+
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("Designation:")
+										partDesignationSpinner = spinner(0, 255, 0) {
+											isEditable = true
+											prefWidth = 80.0
+											valueFactory.valueProperty().addListener { _, _, new ->
+												currentPart?.designation = new
+											}
+										}
+									}
+
+									hbox(spacing = 6) {
+										alignment = Pos.CENTER_LEFT
+										label("Corner Depths:")
+										vbox(spacing = 10) {
+											hbox(spacing = 6) {
+												partTLDepthSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 1.0) {
+													isEditable = true
+													prefWidth = 80.0
+													valueFactory.valueProperty().addListener { _, _, new ->
+														currentPart?.tldepth = new.toFloat()
+														drawCurrentSprite()
+													}
+												}
+												partTRDepthSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 1.0) {
+													isEditable = true
+													prefWidth = 80.0
+													valueFactory.valueProperty().addListener { _, _, new ->
+														currentPart?.trdepth = new.toFloat()
+														drawCurrentSprite()
+													}
+												}
+											}
+											hbox(spacing = 6) {
+												partBLDepthSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 1.0) {
+													isEditable = true
+													prefWidth = 80.0
+													valueFactory.valueProperty().addListener { _, _, new ->
+														currentPart?.bldepth = new.toFloat()
+														drawCurrentSprite()
+													}
+												}
+												partBRDepthSpinner = spinner(-Double.MAX_VALUE, Double.MAX_VALUE, 0.0, 1.0) {
+													isEditable = true
+													prefWidth = 80.0
+													valueFactory.valueProperty().addListener { _, _, new ->
+														currentPart?.brdepth = new.toFloat()
+														drawCurrentSprite()
+													}
+												}
+											}
+										}
+									}
+
 									label("Unknown Data:")
 
 									partUnknownDataBox = textarea {
 										isWrapText = true
 										isEditable = false
+										prefHeight = 0.0
 									}
 								}
 								spriteCanvas = canvas(512.0, 512.0) {
@@ -704,10 +863,18 @@ class EditorView : View("BCCAD Editor") {
 									}
 									onScroll = EventHandler { e ->
 										if (e.isShiftDown) {
-											if (e.deltaY > 0 || e.deltaX > 0) {
-												partSpinner.increment()
+											if (e.isControlDown) {
+												if (e.deltaY > 0 || e.deltaX > 0) {
+													spriteSpinner.increment()
+												} else {
+													spriteSpinner.decrement()
+												}
 											} else {
-												partSpinner.decrement()
+												if (e.deltaY > 0 || e.deltaX > 0) {
+													partSpinner.increment()
+												} else {
+													partSpinner.decrement()
+												}
 											}
 										} else if (e.isControlDown) {
 											if (e.deltaY > 0 || e.deltaX > 0) {
@@ -750,6 +917,12 @@ class EditorView : View("BCCAD Editor") {
 		partRotationSpinner.valueFactory.value = currentPart!!.rotation.toDouble()
 		partColorPicker.value = currentPart!!.multColor
 		partScreenPicker.value = currentPart!!.screenColor
+		partDesignationSpinner.valueFactory.value = currentPart!!.designation
+		partTLDepthSpinner.valueFactory.value = currentPart!!.tldepth.toDouble()
+		partTRDepthSpinner.valueFactory.value = currentPart!!.trdepth.toDouble()
+		partBLDepthSpinner.valueFactory.value = currentPart!!.bldepth.toDouble()
+		partBRDepthSpinner.valueFactory.value = currentPart!!.brdepth.toDouble()
+		partUnkSpinner.valueFactory.value = currentPart!!.unk
 		partOpacitySpinner.valueFactory.value = currentPart!!.opacity
 		partFlipXCheck.isSelected = currentPart!!.flipX
 		partFlipYCheck.isSelected = currentPart!!.flipY

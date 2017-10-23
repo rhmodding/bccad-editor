@@ -26,6 +26,12 @@ class Sprite {
 		return l
 	}
 
+	fun copy(): Sprite {
+		val s = Sprite()
+		s.parts.addAll(parts.map {it.copy()})
+		return s
+	}
+
 	override fun toString(): String {
 		return "Textures: {\n" + parts.map { "\t\t" + it.toString() }.joinToString("\n") + "\n\t}"
 	}
