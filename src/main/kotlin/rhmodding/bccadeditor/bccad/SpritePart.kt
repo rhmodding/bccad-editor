@@ -93,7 +93,7 @@ class SpritePart(var x: Short, var y: Short, var w: Short, var h: Short, var rel
 	fun setTransformations(gc: GraphicsContext) {
 		val transform = Affine()
 		transform.append(Scale(signum(stretchX)*1.0, signum(stretchY)*1.0, relX - 256.0, relY - 256.0))
-		transform.append(Rotate(rotation*1.0, relX - 256 + w*abs(stretchX)/2.0, relY - 256 + h*abs(stretchY)/2.0))
+		transform.append(Rotate(rotation*signum(stretchX)*signum(stretchY)*1.0, relX - 256 + w*abs(stretchX)/2.0, relY - 256 + h*abs(stretchY)/2.0))
 		if (flipX) transform.append(Scale(-1.0, 1.0, relX - 256 + w*abs(stretchX)/2.0, relY - 256 + h*abs(stretchY)/2.0))
 		if (flipY) transform.append(Scale(1.0, -1.0, relX - 256 + w*abs(stretchX)/2.0, relY - 256 + h*abs(stretchY)/2.0))
 		gc.globalAlpha *= opacity/255.0
