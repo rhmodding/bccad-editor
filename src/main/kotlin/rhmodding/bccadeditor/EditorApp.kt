@@ -26,6 +26,7 @@ import javafx.stage.Modality
 import javafx.stage.Stage
 import javafx.stage.Window
 import javafx.util.Duration
+import java.io.File
 
 
 class EditorApp : App(EditorView::class)
@@ -38,6 +39,7 @@ class EditorView : View("BCCAD Editor") {
 	var currentSprite: Sprite? = null
 	var currentPart: SpritePart? = null
 	var bccad: BCCAD? = null
+	var path: String = "/"
 
 	var sheet: BufferedImage? = null
 
@@ -148,45 +150,59 @@ class EditorView : View("BCCAD Editor") {
 			borderpane {
 				top = menubar {
 					menu("File") {
-						item("Open Sprite Sheet...") {
+						item("Open...") {
 							action {
 								animation?.stop()
-								val f = chooseFile("Choose sheet", arrayOf(FileChooser.ExtensionFilter("PNG", "*.png"), FileChooser.ExtensionFilter("All files", "*.*")))
-								if (f.isNotEmpty()) {
-									val file = f[0]
-									val rawIm = ImageIO.read(file)
-									sheet = BufferedImage(rawIm.height, rawIm.width, rawIm.type)
-									val transform = AffineTransform()
-									transform.translate(0.5*rawIm.height, 0.5*rawIm.width)
-									transform.rotate(-Math.PI/2)
-									transform.translate(-0.5*rawIm.width, -0.5*rawIm.height)
-									val g = sheet!!.createGraphics() as Graphics2D
-									g.drawImage(rawIm, transform, null)
-									g.dispose()
-								}
-							}
-						}
-						item("Open BCCAD...") {
-							action {
-								animation?.stop()
-								val f = chooseFile("Choose bccad", arrayOf(FileChooser.ExtensionFilter("BCCAD", "*.bccad")))
-								if (f.isNotEmpty()) {
-									bccad = BCCAD(f[0])
-									spriteSpinner.decrement(1000)
-									spriteListener(ReadOnlyObjectWrapper(0), 0, 0)
-									val sf = spriteSpinner.valueFactory
-									val ssf = stepSpriteSpinner.valueFactory
-									if (sf is SpinnerValueFactory.IntegerSpinnerValueFactory) {
-										sf.max = bccad!!.sprites.size-1
-									}
-									if (ssf is SpinnerValueFactory.IntegerSpinnerValueFactory) {
-										ssf.max = bccad!!.sprites.size-1
-									}
-									animationSpinner.decrement(1000)
-									animationListener(ReadOnlyObjectWrapper(0), 0, 0)
-									val v = animationSpinner.valueFactory
-									if (v is SpinnerValueFactory.IntegerSpinnerValueFactory) {
-										v.max = bccad!!.animations.size - 1
+								val fileChooser = FileChooser()
+								fileChooser.title = "Choose bccad"
+								fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("BCCAD", "*.bccad"))
+								fileChooser.initialDirectory = File(path)
+
+								val f = fileChooser.showOpenDialog(null)
+								if (f != null) {
+									path = f.parent
+									fileChooser.title = "Choose sprite sheet"
+									fileChooser.initialDirectory = File(path)
+									fileChooser.extensionFilters.remove(0, 1)
+									fileChooser.extensionFilters.addAll(arrayOf(FileChooser.ExtensionFilter("PNG", "*.png"), FileChooser.ExtensionFilter("All files", "*.*")))
+									val f2 = fileChooser.showOpenDialog(null)
+									if (f2 != null) {
+										val b = BCCAD(f)
+										val rawIm = ImageIO.read(f2)
+										if (rawIm.width != b.sheetH.toInt() || rawIm.height != b.sheetW.toInt()) {
+											val button = Alert(Alert.AlertType.WARNING, "This image's dimensions do not agree with the BCCAD. Do you want to adjust the BCCAD and continue?", ButtonType.YES, ButtonType.NO).showAndWait()
+											if (button.isPresent && button.get() == ButtonType.YES) {
+												b.sheetH = rawIm.width.toShort()
+												b.sheetW = rawIm.height.toShort()
+											} else {
+												return@action
+											}
+										}
+										bccad = b
+										sheet = BufferedImage(rawIm.height, rawIm.width, rawIm.type)
+										val transform = AffineTransform()
+										transform.translate(0.5*rawIm.height, 0.5*rawIm.width)
+										transform.rotate(-Math.PI/2)
+										transform.translate(-0.5*rawIm.width, -0.5*rawIm.height)
+										val g = sheet!!.createGraphics() as Graphics2D
+										g.drawImage(rawIm, transform, null)
+										g.dispose()
+										spriteSpinner.decrement(1000)
+										spriteListener(ReadOnlyObjectWrapper(0), 0, 0)
+										val sf = spriteSpinner.valueFactory
+										val ssf = stepSpriteSpinner.valueFactory
+										if (sf is SpinnerValueFactory.IntegerSpinnerValueFactory) {
+											sf.max = bccad!!.sprites.size-1
+										}
+										if (ssf is SpinnerValueFactory.IntegerSpinnerValueFactory) {
+											ssf.max = bccad!!.sprites.size-1
+										}
+										animationSpinner.decrement(1000)
+										animationListener(ReadOnlyObjectWrapper(0), 0, 0)
+										val v = animationSpinner.valueFactory
+										if (v is SpinnerValueFactory.IntegerSpinnerValueFactory) {
+											v.max = bccad!!.animations.size - 1
+										}
 									}
 								}
 							}

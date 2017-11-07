@@ -4,14 +4,12 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.file.Files
-import java.nio.file.Path
 import java.nio.file.Paths
-import java.util.*
 
 class BCCAD(file: File) {
 	var timestamp: Int
-	var unkX: Short
-	var unkY: Short
+	var sheetW: Short
+	var sheetH: Short
 	val sprites = mutableListOf<Sprite>()
 	val animations = mutableListOf<Animation>()
 
@@ -21,8 +19,8 @@ class BCCAD(file: File) {
 		buf.order(ByteOrder.LITTLE_ENDIAN)
 		buf.position(0)
 		timestamp = buf.int
-		unkX = buf.short
-		unkY = buf.short
+		sheetW = buf.short
+		sheetH = buf.short
 		repeat(buf.int) {
 			sprites.add(Sprite.fromBuffer(buf))
 		}
@@ -35,8 +33,8 @@ class BCCAD(file: File) {
 		val firstBytes = ByteArray(12)
 		val buf = ByteBuffer.wrap(firstBytes).order(ByteOrder.LITTLE_ENDIAN)
 		buf.putInt(timestamp)
-		buf.putShort(unkX)
-		buf.putShort(unkY)
+		buf.putShort(sheetW)
+		buf.putShort(sheetH)
 		buf.putInt(sprites.size)
 		val l = firstBytes.toMutableList()
 		for (s in sprites) {
@@ -53,7 +51,7 @@ class BCCAD(file: File) {
 	}
 
 	override fun toString(): String {
-		return "$timestamp $unkX $unkY ${sprites.size} ${animations.size}\n" +
+		return "$timestamp $sheetW $sheetH ${sprites.size} ${animations.size}\n" +
 				"Sprites: {\n" + sprites.map { "\t" + it.toString() }.joinToString("\n") + "\n}" +
 				"\nAnimations: {\n" + animations.map { "\t" + it.toString() }.joinToString("\n") + "\n}"
 	}
