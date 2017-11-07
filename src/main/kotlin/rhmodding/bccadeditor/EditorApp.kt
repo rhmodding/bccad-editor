@@ -209,11 +209,12 @@ class EditorView : View("BCCAD Editor") {
 						}
 						item("Save", "Shortcut+S") {
 							action {
-								val f = chooseFile("Save bccad", arrayOf(FileChooser.ExtensionFilter("BCCAD", "*.bccad")), FileChooserMode.Save)
-								if (f.isNotEmpty()) {
-									val file = f[0]
-									file.writeBytes(bccad!!.toBytes())
-								}
+								val fileChooser = FileChooser()
+								fileChooser.title = "Save bccad"
+								fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("BCCAD", "*.bccad"))
+								fileChooser.initialDirectory = File(path)
+
+								fileChooser.showSaveDialog(null)?.writeBytes(bccad!!.toBytes())
 							}
 						}
 					}
