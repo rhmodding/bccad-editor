@@ -262,8 +262,10 @@ class EditorView : View("BCCAD Editor $VERSION") {
                                                         this.headerText = "Rename animation \"${animation.name}\" to...\n"
 //                                                        this.contentText = "Rename animation \"${animation.name}\" to...\n"
                                                     }.showAndWait().ifPresent { newName ->
-                                                        animation.name = newName
-                                                        aNameLabel.text = newName
+                                                        if (newName.isNotBlank()) {
+                                                            animation.name = newName
+                                                            aNameLabel.text = newName
+                                                        }
                                                     }
                                                 }
                                             }
