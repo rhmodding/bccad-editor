@@ -3,7 +3,7 @@ package rhmodding.bccadeditor.bccad
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
-class Animation(val name: String) {
+class Animation(var name: String) {
 	var steps: MutableList<AnimationStep> = mutableListOf()
 
 	operator fun get(index: Int): AnimationStep {
@@ -51,6 +51,6 @@ class Animation(val name: String) {
 	}
 
 	override fun toString(): String {
-		return "Animation $name: {\n" + steps.map { "\t\t" + it.toString() }.joinToString("\n") + "\n\t}"
+		return "Animation $name: {\n" + steps.joinToString("\n") { "\t\t" + it.toString() } + "\n\t}"
 	}
 }

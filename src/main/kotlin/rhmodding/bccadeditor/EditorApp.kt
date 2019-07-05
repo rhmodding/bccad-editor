@@ -248,7 +248,26 @@ class EditorView : View("BCCAD Editor $VERSION") {
                                             prefWidth = 60.0
                                             valueProperty().addListener(animationListener)
                                         }
-                                        aNameLabel = label("")
+                                    }
+                                    hbox(spacing = 6) {
+                                        alignment = Pos.CENTER_LEFT
+                                        label("Name:")
+                                        aNameLabel = label("<no animation loaded>")
+                                        button(text = "Change") {
+                                            this.onAction = EventHandler {
+                                                val animation = currentAnimation
+                                                if (animation != null) {
+                                                    TextInputDialog(animation.name).apply {
+                                                        this.title = "Renaming animation \"${animation.name}\""
+                                                        this.headerText = "Rename animation \"${animation.name}\" to...\n"
+//                                                        this.contentText = "Rename animation \"${animation.name}\" to...\n"
+                                                    }.showAndWait().ifPresent { newName ->
+                                                        animation.name = newName
+                                                        aNameLabel.text = newName
+                                                    }
+                                                }
+                                            }
+                                        }
                                     }
                                     hbox(spacing = 6) {
                                         alignment = Pos.CENTER_LEFT
