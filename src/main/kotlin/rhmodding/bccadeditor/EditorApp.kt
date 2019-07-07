@@ -1,5 +1,6 @@
 package rhmodding.bccadeditor
 
+import com.madgag.gif.fmsware.AnimatedGifEncoder
 import javafx.animation.KeyFrame
 import javafx.animation.Timeline
 import javafx.beans.property.ReadOnlyObjectWrapper
@@ -8,8 +9,10 @@ import javafx.embed.swing.SwingFXUtils
 import javafx.event.EventHandler
 import javafx.geometry.Pos
 import javafx.scene.Scene
+import javafx.scene.SnapshotParameters
 import javafx.scene.canvas.Canvas
 import javafx.scene.control.*
+import javafx.scene.image.WritableImage
 import javafx.scene.layout.VBox
 import javafx.scene.paint.Color
 import javafx.scene.transform.Affine
@@ -158,7 +161,7 @@ class EditorView : View("BCCAD Editor $VERSION") {
             borderpane {
                 top = menubar {
                     menu("File") {
-                        item("Open...") {
+                        item("Open...", "Shortcut+O") {
                             action {
                                 animation?.stop()
                                 val fileChooser = FileChooser()
@@ -226,6 +229,42 @@ class EditorView : View("BCCAD Editor $VERSION") {
                                     fileChooser.initialDirectory = File(path)
 
                                     fileChooser.showSaveDialog(null)?.writeBytes(bccad.toBytes())
+                                }
+                            }
+                        }
+                        item("Export as GIF", "Shortcut+Shift+G") {
+                            action {
+                                val ani = currentAnimation
+                                val bccad = bccad
+                                if (ani != null && bccad != null) {
+                                    val fileChooser = FileChooser()
+                                    fileChooser.title = "Export this animation (${ani.name}) as an animated GIF"
+                                    fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("GIF", "*.gif"))
+                                    fileChooser.initialDirectory = File(path)
+
+                                    val file = fileChooser.showSaveDialog(null)
+                                    if (file != null) {
+                                        val encoder = AnimatedGifEncoder()
+                                        encoder.also { e ->
+                                            e.start(file.absolutePath)
+                                            e.setBackground(java.awt.Color(1f, 1f, 1f, 0f))
+                                            e.setSize(512, 512)
+                                            e.setRepeat(0)
+                                            val writableImage = WritableImage(512, 512)
+                                            val canvas = stepCanvas
+                                            ani.steps.forEach { step ->
+                                                e.setDelay((step.duration * frame).toInt())
+                                                drawTransparencyGrid(canvas)
+                                                val sprite = bccad.sprites[step.spriteNum.toInt()]
+                                                drawSprite(canvas, sprite)
+                                                canvas.snapshot(SnapshotParameters(), writableImage)
+                                                val buf = SwingFXUtils.fromFXImage(writableImage, null)
+                                                e.addFrame(buf)
+                                            }
+                                            e.finish()
+                                        }
+                                        drawCurrentSprite()
+                                    }
                                 }
                             }
                         }
