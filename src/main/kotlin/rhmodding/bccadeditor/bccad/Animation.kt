@@ -4,6 +4,8 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class Animation(var name: String) {
+
+	var interpolation: Int = 0
 	var steps: MutableList<AnimationStep> = mutableListOf()
 
 	operator fun get(index: Int): AnimationStep {
@@ -27,7 +29,7 @@ class Animation(var name: String) {
 				buf.get()
 			}
 			val a = Animation(s)
-			buf.int
+			a.interpolation = buf.int // This is the interpolation int, supposedly
 			repeat(buf.int) {
 				a.steps.add(AnimationStep.fromBuffer(buf))
 			}
@@ -42,7 +44,8 @@ class Animation(var name: String) {
 		l.addAll(ByteArray(4 - ((name.length+1)%4)).toList())
 		val a = ByteArray(8)
 		val bb = ByteBuffer.wrap(a).order(ByteOrder.LITTLE_ENDIAN)
-		bb.putInt(4, steps.size)
+		bb.putInt(interpolation)
+		bb.putInt(steps.size)
 		l.addAll(a.toList())
 		for (s in steps) {
 			l.addAll(s.toBytes())
@@ -51,6 +54,6 @@ class Animation(var name: String) {
 	}
 
 	override fun toString(): String {
-		return "Animation $name: {\n" + steps.joinToString("\n") { "\t\t" + it.toString() } + "\n\t}"
+		return "Animation $name: {\ninterpolation: $interpolation\n" + steps.joinToString("\n") { "\t\t" + it.toString() } + "\n\t}"
 	}
 }
