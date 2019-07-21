@@ -33,7 +33,7 @@ import javax.imageio.ImageIO
 import kotlin.math.abs
 import kotlin.math.pow
 
-val VERSION: Version = Version(1, 3, 0, "")
+val VERSION: Version = Version(1, 3, 1, "DEVELOPMENT")
 
 class EditorApp : App(EditorView::class)
 
