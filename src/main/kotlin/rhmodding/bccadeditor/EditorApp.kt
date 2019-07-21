@@ -181,7 +181,7 @@ class EditorView : View("BCCAD Editor $VERSION") {
                                         val b = BCCAD(f)
                                         val rawIm = ImageIO.read(f2)
                                         if (rawIm.width != b.sheetH.toInt() || rawIm.height != b.sheetW.toInt()) {
-                                            val button = Alert(Alert.AlertType.WARNING, "This image's dimensions do not agree with the BCCAD. Do you want to adjust the BCCAD and continue?", ButtonType.YES, ButtonType.NO).showAndWait()
+                                            val button = Alert(Alert.AlertType.WARNING, "This image's dimensions do not agree with the BCCAD. Do you want to adjust the BCCAD and continue?\n\nBCCAD dim.: ${b.sheetW.toInt()} by ${b.sheetH.toInt()}", ButtonType.YES, ButtonType.NO).showAndWait()
                                             if (button.isPresent && button.get() == ButtonType.YES) {
                                                 b.sheetH = rawIm.width.toShort()
                                                 b.sheetW = rawIm.height.toShort()
