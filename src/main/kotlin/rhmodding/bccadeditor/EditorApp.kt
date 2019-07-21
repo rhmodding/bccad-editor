@@ -51,6 +51,7 @@ class EditorView : View("BCCAD Editor $VERSION") {
 
     lateinit var animationSpinner: Spinner<Int>
     lateinit var aNameLabel: Label
+    lateinit var aInterpolationCheckbox: CheckBox
     lateinit var stepSpinner: Spinner<Int>
     lateinit var spriteSpinner: Spinner<Int>
     lateinit var partSpinner: Spinner<Int>
@@ -122,6 +123,7 @@ class EditorView : View("BCCAD Editor $VERSION") {
                 f.max = animation.steps.size - 1
             }
             aNameLabel.text = animation.name
+            aInterpolationCheckbox.isSelected = animation.interpolated
         }
     }
 
@@ -309,6 +311,13 @@ class EditorView : View("BCCAD Editor $VERSION") {
                                                     }
                                                 }
                                             }
+                                        }
+                                    }
+                                    hbox(spacing = 6) {
+                                        alignment = Pos.CENTER_LEFT
+                                        aInterpolationCheckbox = checkbox(text = "Is interpolated?") {
+                                            val animation = currentAnimation
+                                            animation?.interpolated = this.isSelected
                                         }
                                     }
                                     hbox(spacing = 6) {
